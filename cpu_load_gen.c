@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <sched.h>
 #include <sys/time.h>
 
 uint64_t getCurrTV()
@@ -21,13 +26,6 @@ double cal()
     }
     return y;
 }
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <sched.h>
 
 void *myfun(void *arg)
 {
