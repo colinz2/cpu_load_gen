@@ -21,8 +21,8 @@ struct ThreadInfo
 static pthread_mutex_t g_lock;
 static pthread_cond_t  g_cond;
 
-volatile static int g_running = 0;
-volatile static int g_waiting = 0;
+static volatile int g_running = 0;
+static volatile int g_waiting = 0;
 static float g_cpu_usage = 66.0;
 
 uint64_t getCurrTV()
@@ -49,6 +49,8 @@ void* load(void* arg)
     cpu_set_t mask;
     int core = (int)(*(int*)arg);
 
+    printf("core id=%d \n", core);
+
     CPU_ZERO(&mask);
     CPU_SET(core, &mask);
     if (pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0) {
@@ -62,14 +64,6 @@ void* load(void* arg)
         }
         pthread_mutex_unlock(&g_lock);
         cal();
-/*        
-        if (1) {
-            usleep(500);
-            //cal();
-        } else {
-            usleep(1000);
-        }
-*/
     }
     pthread_exit(NULL);
     return NULL;
@@ -140,7 +134,6 @@ int main(int argc, char const *argv[])
         pthread_mutex_unlock(&g_lock);
         pthread_cond_broadcast(&g_cond);
         usleep(1000 * 20);
-
         //printf("g_waiting = %d , flag = %d, %f, %f\n", g_waiting, flag, rate - g_cpu_usage, fabsf(rate - g_cpu_usage));
     }
 

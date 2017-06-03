@@ -30,11 +30,12 @@ max(uint32_t a, uint32_t b)
 static inline 
 uint32_t roundup_power_of_2(uint32_t a)
 {
+    int i;
     if (is_power_of_2(a))
         return a;
 
     uint32_t position = 0;
-    for (int i = a; i != 0; i >>= 1)
+    for (i = a; i != 0; i >>= 1)
         position++;
 
     return (uint32_t)(1 << position);
@@ -241,6 +242,7 @@ get_cpu_usagetime(cpu_usagetime_t *usage)
         return -1;
     }
     cpu_usagetime_convrt(&stat, usage);
+    return 0;
 }
 
 /*
