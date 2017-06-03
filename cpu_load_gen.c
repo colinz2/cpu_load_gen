@@ -4,8 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <pthread.h>
+#define __USE_GNU  
 #include <sched.h>
+#include <pthread.h>
 #include <sys/time.h>
 
 uint64_t getCurrTV()
