@@ -8,8 +8,12 @@
 #include <sched.h>
 #include <pthread.h>
 #include <sys/time.h>
+#include <sys/types.h>
+#include <sys/syscall.h>  
 
 #include "cpu_usage.h"
+
+#define gettid_syscall() syscall(__NR_gettid)  
 
 struct ThreadInfo
 {
@@ -21,18 +25,19 @@ struct ThreadInfo
 static pthread_mutex_t g_lock;
 static pthread_cond_t  g_cond;
 
-static volatile int g_running = 0;
-static volatile int g_waiting = 0;
+static volatile int g_running = 1;
+static volatile int g_waiting = 1;
 static float g_cpu_usage = 66.0;
 
-uint64_t getCurrTV()
-{
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return tv.tv_sec *1000 + tv.tv_usec /1000;
+static void 
+pthreadCall(const char* label, int result) {
+    if (result != 0) {
+        fprintf(stderr, "pthread %s: %s\n", label, strerror(result));
+        abort();
+    }
 }
 
-double cal(void)
+static double cal(void)
 {
     int i = 0;
     double y = 0;
@@ -44,32 +49,33 @@ double cal(void)
     return y;
 }
 
-void* load(void* arg)
+static void* load(void* arg)
 {
     cpu_set_t mask;
     int core = (int)(*(int*)arg);
 
-    printf("core id=%d \n", core);
+    printf("thread (pid:%d)(tid:%ld)(thread id:%ld) will run at core id=%d \n", getpid(), syscall(__NR_gettid), pthread_self(), core);
 
     CPU_ZERO(&mask);
     CPU_SET(core, &mask);
     if (pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0) {
         fprintf(stderr, "set thread affinity failed\n");
+        pthread_exit(NULL);
     }
 
     while (g_running) {
-        pthread_mutex_lock(&g_lock);
+        pthreadCall("g_lock lock", pthread_mutex_lock(&g_lock));
         while (g_waiting) {
-            pthread_cond_wait(&g_cond, &g_lock);
+            pthreadCall("g_cond wait", pthread_cond_wait(&g_cond, &g_lock));
         }
-        pthread_mutex_unlock(&g_lock);
+        pthreadCall("g_lock unlock", pthread_mutex_unlock(&g_lock));
         cal();
     }
     pthread_exit(NULL);
     return NULL;
 }
 
-float cal_cpu(Crb_t* crb)
+static float cal_cpu(Crb_t* crb)
 {
     cpu_usagetime_t a, b;
     float usage_rate = g_cpu_usage;
@@ -93,17 +99,14 @@ int main(int argc, char const *argv[])
     }
     printf("g_cpu_usage= %f\n", g_cpu_usage);
 
-    g_running = 1;
-    g_waiting = 1;
-
     thread_info = calloc(sizeof(struct ThreadInfo), num);
     if (thread_info == NULL) {
         fprintf(stderr, "thread_info is NULL\n");
         exit(-1);
     }
 
-    pthread_mutex_init(&g_lock, NULL);
-    pthread_cond_init(&g_cond, NULL);
+    pthreadCall("g_lock init", pthread_mutex_init(&g_lock, NULL));
+    pthreadCall("g_cond init", pthread_cond_init(&g_cond, NULL));
 
     for (i = 0; i < num; i++) {
         thread_info[i].core_num = i;
@@ -116,6 +119,10 @@ int main(int argc, char const *argv[])
     }
 
     Crb_t* crb = crb_creat(256, sizeof(cpu_usagetime_t));
+    if (NULL == crb) {
+        fprintf(stderr, "fail to create crb\n");
+        exit(-1);
+    }
 
     while (1) {
         rate = cal_cpu(crb);
@@ -129,10 +136,10 @@ int main(int argc, char const *argv[])
             } 
         }
 
-        pthread_mutex_lock(&g_lock);
+        pthreadCall("g_lock lock", pthread_mutex_lock(&g_lock));
         g_waiting = flag;
-        pthread_mutex_unlock(&g_lock);
-        pthread_cond_broadcast(&g_cond);
+        pthreadCall("g_lock unlock", pthread_mutex_unlock(&g_lock));
+        pthreadCall("g_cond broadcast", pthread_cond_broadcast(&g_cond));
         usleep(1000 * 20);
         //printf("g_waiting = %d , flag = %d, %f, %f\n", g_waiting, flag, rate - g_cpu_usage, fabsf(rate - g_cpu_usage));
     }
@@ -143,8 +150,8 @@ int main(int argc, char const *argv[])
         }
     }
 
-    pthread_mutex_destroy(&g_lock);
-    pthread_cond_destroy(&g_cond);
+    pthreadCall("g_lock destryoy", pthread_mutex_destroy(&g_lock));
+    pthreadCall("g_cond destryoy", pthread_cond_destroy(&g_cond));
     free(thread_info);
     return 0;
 }

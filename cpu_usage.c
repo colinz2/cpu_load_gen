@@ -15,18 +15,6 @@ is_power_of_2(uint32_t n)
     return (n != 0 && ((n & (n - 1)) == 0));
 }
 
-static inline uint32_t 
-min(uint32_t a, uint32_t b)
-{
-    return a > b ? b : a;
-}
-
-static inline uint32_t 
-max(uint32_t a, uint32_t b)
-{
-    return a > b ? a : b;
-}
-
 static inline 
 uint32_t roundup_power_of_2(uint32_t a)
 {
@@ -50,6 +38,9 @@ crb_creat(uint32_t size, uint32_t msize)
     crb_ptr->msize = msize;
     crb_ptr->size = roundup_power_of_2(size);
     crb_ptr->data = calloc(sizeof(void *), crb_ptr->size);
+    if (crb_ptr->data == NULL) {
+        return NULL;
+    }
     for (i = 0; i < crb_ptr->size; i++) {
         crb_ptr->data[i] = malloc(crb_ptr->msize);
     }
@@ -239,25 +230,9 @@ get_cpu_usagetime(cpu_usagetime_t *usage)
     stat_cputime_t stat;
     int rc = read_cpu_stat(&stat);
     if (rc < 0) {
+        fprintf(stderr, "%s\n", "fail to get cpu stat");
         return -1;
     }
     cpu_usagetime_convrt(&stat, usage);
     return 0;
 }
-
-/*
-int main(int argc, char const *argv[])
-{
-    cpu_usagetime_t a, b;
-    Crb_t* crb = crb_creat(60, sizeof(cpu_usagetime_t));
-    while (1) {
-        get_cpu_usagetime(&a);
-        crb_set(crb, &a);
-        if (crb_get_offset(crb, &b, 4) == 0) {
-            cal_cpu_usage_result(&b, &a, 2);
-        }
-        usleep(500 * 1000);
-    }
-    return 0;
-}
-*/
