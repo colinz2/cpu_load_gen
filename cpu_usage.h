@@ -31,7 +31,7 @@ typedef struct cpu_usagetime_t
 
 struct Crb
 {
-    uint32_t curr;
+    volatile uint32_t curr;
     uint32_t size;
     uint32_t msize;
     void**   data;
