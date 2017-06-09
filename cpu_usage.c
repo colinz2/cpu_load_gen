@@ -116,7 +116,7 @@ read_cpu_stat(stat_cputime_t *stat)
              &stat->softirq,
              &stat->steal,
              &stat->guest,
-             &stat->guest_nice) < 10) {
+             &stat->guest_nice) < 9) {
             return -1;
     }
     gettimeofday(&stat->tv, NULL);
